@@ -1,4 +1,4 @@
-import axios from 'axios';
+const axios = require('axios');
 
 const playlists = {
   tranquilo_trabajar: [
@@ -39,7 +39,7 @@ const playlists = {
   ],
 };
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -58,57 +58,3 @@ export default async function handler(req, res) {
       headers: { 'Authorization': `Bearer ${accessToken}` },
     });
     const userId = userResponse.data.id;
-
-    const playlistResponse = await axios.post(
-      `https://api.spotify.com/v1/users/${userId}/playlists`,
-      {
-        name: `${estado} - ${actividad}`,
-        description: 'Generada con Playlist Generator',
-        public: false,
-      },
-      {
-        headers: { 'Authorization': `Bearer ${accessToken}` },
-      }
-    );
-    const playlistId = playlistResponse.data.id;
-
-    const uris = [];
-    for (const song of songs) {
-      try {
-        const searchResponse = await axios.get('https://api.spotify.com/v1/search', {
-          params: {
-            q: `${song.titulo} ${song.artista}`,
-            type: 'track',
-            limit: 1,
-          },
-          headers: { 'Authorization': `Bearer ${accessToken}` },
-        });
-        if (searchResponse.data.tracks.items.length > 0) {
-          uris.push(searchResponse.data.tracks.items[0].uri);
-        }
-      } catch (error) {
-        console.error('Error searching:', error);
-      }
-    }
-
-    if (uris.length > 0) {
-      await axios.post(
-        `https://api.spotify.com/v1/playlists/${playlistId}/tracks`,
-        { uris },
-        {
-          headers: { 'Authorization': `Bearer ${accessToken}` },
-        }
-      );
-    }
-
-    return res.status(200).json({
-      success: true,
-      playlistId,
-      playlistUrl: `https://open.spotify.com/playlist/${playlistId}`,
-      cancionesAgregadas: uris.length,
-    });
-  } catch (error) {
-    console.error('Error:', error.message);
-    return res.status(500).json({ error: 'Failed to create playlist' });
-  }
-}
