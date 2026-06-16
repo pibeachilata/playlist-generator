@@ -4,12 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Playlist Generator</title>
-  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f1419; color: #fff; min-height: 100vh; }
+    body { font-family: -apple-system, sans-serif; background: #0f1419; color: #fff; min-height: 100vh; }
     .container { max-width: 500px; margin: 0 auto; padding: 2rem; }
     .card { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 2rem; }
     h1 { margin-bottom: 1rem; }
@@ -17,134 +14,137 @@
     input, select { width: 100%; padding: 0.75rem; margin-bottom: 1rem; border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.05); color: #fff; border-radius: 6px; }
     button { width: 100%; padding: 0.875rem; background: #1DB954; color: #fff; border: none; border-radius: 24px; cursor: pointer; font-weight: 600; margin-top: 1rem; }
     button:hover { background: #1ed760; }
-    button:disabled { opacity: 0.5; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .hidden { display: none; }
     .success { background: rgba(29, 185, 84, 0.1); border: 1px solid #1DB954; padding: 1.5rem; margin-top: 1rem; border-radius: 12px; text-align: center; }
     .success a { color: #1ed760; text-decoration: none; font-weight: 600; }
     .error { background: rgba(255, 0, 0, 0.1); border: 1px solid #ff4444; padding: 1rem; margin-top: 1rem; color: #ff6666; border-radius: 6px; }
   </style>
 </head>
 <body>
-  <div id="root"></div>
+  <div class="container">
+    <div class="card">
+      <div id="auth-screen">
+        <h1>🎵 Playlist Generator</h1>
+        <p style="margin-bottom: 1.5rem; color: rgba(255,255,255,0.7);">Conecta con Spotify para generar playlists personalizadas.</p>
+        <button onclick="connectSpotify()">Conectar con Spotify</button>
+      </div>
 
-  <script type="text/babel">
-    function App() {
-      const [authenticated, setAuthenticated] = React.useState(false);
-      const [estado, setEstado] = React.useState('tranquilo');
-      const [actividad, setActividad] = React.useState('trabajar');
-      const [loading, setLoading] = React.useState(false);
-      const [result, setResult] = React.useState(null);
-      const [error, setError] = React.useState(null);
+      <div id="form-screen" class="hidden">
+        <h1>🎵 Tu Playlist</h1>
+        <label>Me siento...</label>
+        <select id="estado">
+          <option value="tranquilo">Tranquilo</option>
+          <option value="feliz">Feliz</option>
+          <option value="reflexivo">Reflexivo</option>
+        </select>
+        
+        <label>Voy a estar...</label>
+        <select id="actividad">
+          <option value="trabajar">Trabajando</option>
+          <option value="leer">Leyendo</option>
+        </select>
+        
+        <button id="createBtn" onclick="crearPlaylist()">Crear en Spotify</button>
+        <div id="error" class="error hidden"></div>
+      </div>
 
-      const clientId = 'ea167a43e25b4e1db3c3df7f429c2fab';
-      const redirectUri = window.location.origin + '/api/callback';
-
-      const connectSpotify = () => {
-        const authUrl = `https://accounts.spotify.com/authorize?client_id=${clientId}&response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent('playlist-modify-public playlist-modify-private')}`;
-        window.location.href = authUrl;
-      };
-
-      const crearPlaylist = async () => {
-        setLoading(true);
-        setError(null);
-        try {
-          const token = new URLSearchParams(window.location.search).get('token') || localStorage.getItem('spotify_token');
-          
-          if (!token) {
-            setError('Conecta con Spotify primero');
-            setLoading(false);
-            return;
-          }
-
-          const response = await fetch('/api/playlist', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ estado, actividad, accessToken: token }),
-          });
-
-          const data = await response.json();
-          if (data.success) {
-            setResult(data);
-            localStorage.setItem('spotify_token', token);
-          } else {
-            setError(data.error);
-          }
-        } catch (error) {
-          setError(error.message);
-        }
-        setLoading(false);
-      };
-
-      React.useEffect(() => {
-        const token = new URLSearchParams(window.location.search).get('token');
-        if (token) {
-          localStorage.setItem('spotify_token', token);
-          setAuthenticated(true);
-          window.history.replaceState({}, '', '/');
-        } else if (localStorage.getItem('spotify_token')) {
-          setAuthenticated(true);
-        }
-      }, []);
-
-      if (!authenticated) {
-        return (
-          <div className="container">
-            <div className="card">
-              <h1>🎵 Playlist Generator</h1>
-              <p style={{ marginBottom: '1.5rem', color: 'rgba(255,255,255,0.7)' }}>
-                Conecta con Spotify para generar playlists personalizadas.
-              </p>
-              <button onClick={connectSpotify}>Conectar con Spotify</button>
-            </div>
-          </div>
-        );
-      }
-
-      if (result) {
-        return (
-          <div className="container">
-            <div className="card">
-              <h1>✅ ¡Listo!</h1>
-              <div className="success">
-                <p style={{ marginBottom: '1rem' }}>Se creó la playlist con {result.cancionesAgregadas} canciones</p>
-                <a href={result.playlistUrl} target="_blank" rel="noopener noreferrer">
-                  Abrir en Spotify →
-                </a>
-              </div>
-              <button onClick={() => { setResult(null); }}>Crear otra</button>
-            </div>
-          </div>
-        );
-      }
-
-      return (
-        <div className="container">
-          <div className="card">
-            <h1>🎵 Tu Playlist</h1>
-            
-            <label>Me siento...</label>
-            <select value={estado} onChange={(e) => setEstado(e.target.value)}>
-              <option value="tranquilo">Tranquilo</option>
-              <option value="feliz">Feliz</option>
-              <option value="reflexivo">Reflexivo</option>
-            </select>
-            
-            <label>Voy a estar...</label>
-            <select value={actividad} onChange={(e) => setActividad(e.target.value)}>
-              <option value="trabajar">Trabajando</option>
-              <option value="leer">Leyendo</option>
-            </select>
-            
-            <button onClick={crearPlaylist} disabled={loading}>
-              {loading ? 'Creando...' : 'Crear en Spotify'}
-            </button>
-
-            {error && <div className="error">{error}</div>}
-          </div>
+      <div id="result-screen" class="hidden">
+        <h1>✅ ¡Listo!</h1>
+        <div class="success">
+          <p id="result-text" style="margin-bottom: 1rem;"></p>
+          <a id="result-link" href="#" target="_blank">Abrir en Spotify →</a>
         </div>
-      );
+        <button onclick="reset()">Crear otra</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const clientId = 'ea167a43e25b4e1db3c3df7f429c2fab';
+    const redirectUri = window.location.origin + '/api/callback';
+
+    function connectSpotify() {
+      const scopes = 'playlist-modify-public playlist-modify-private';
+      const authUrl = `https://accounts.spotify.com/authorize?client_id=${clientId}&response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scopes)}`;
+      window.location.href = authUrl;
     }
 
-    ReactDOM.render(<App />, document.getElementById('root'));
+    function crearPlaylist() {
+      const token = new URLSearchParams(window.location.search).get('token') || localStorage.getItem('spotify_token');
+      const estado = document.getElementById('estado').value;
+      const actividad = document.getElementById('actividad').value;
+
+      if (!token) {
+        showError('Conecta con Spotify primero');
+        return;
+      }
+
+      document.getElementById('createBtn').disabled = true;
+      document.getElementById('createBtn').textContent = 'Creando...';
+
+      fetch('/api/playlist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ estado, actividad, accessToken: token })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          localStorage.setItem('spotify_token', token);
+          document.getElementById('result-text').textContent = `Se creó la playlist con ${data.cancionesAgregadas} canciones`;
+          document.getElementById('result-link').href = data.playlistUrl;
+          showScreen('result');
+        } else {
+          showError(data.error);
+          document.getElementById('createBtn').disabled = false;
+          document.getElementById('createBtn').textContent = 'Crear en Spotify';
+        }
+      })
+      .catch(err => {
+        showError(err.message);
+        document.getElementById('createBtn').disabled = false;
+        document.getElementById('createBtn').textContent = 'Crear en Spotify';
+      });
+    }
+
+    function showError(msg) {
+      const errorDiv = document.getElementById('error');
+      errorDiv.textContent = msg;
+      errorDiv.classList.remove('hidden');
+    }
+
+    function showScreen(screen) {
+      document.getElementById('auth-screen').classList.add('hidden');
+      document.getElementById('form-screen').classList.add('hidden');
+      document.getElementById('result-screen').classList.add('hidden');
+      
+      if (screen === 'auth') document.getElementById('auth-screen').classList.remove('hidden');
+      if (screen === 'form') document.getElementById('form-screen').classList.remove('hidden');
+      if (screen === 'result') document.getElementById('result-screen').classList.remove('hidden');
+    }
+
+    function reset() {
+      document.getElementById('error').classList.add('hidden');
+      document.getElementById('createBtn').disabled = false;
+      document.getElementById('createBtn').textContent = 'Crear en Spotify';
+      showScreen('form');
+    }
+
+    window.addEventListener('load', function() {
+      const token = new URLSearchParams(window.location.search).get('token');
+      const savedToken = localStorage.getItem('spotify_token');
+      
+      if (token) {
+        localStorage.setItem('spotify_token', token);
+        window.history.replaceState({}, '', '/');
+        showScreen('form');
+      } else if (savedToken) {
+        showScreen('form');
+      } else {
+        showScreen('auth');
+      }
+    });
   </script>
 </body>
 </html>
