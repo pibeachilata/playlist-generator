@@ -56,6 +56,11 @@ module.exports = async function handler(req, res) {
     const userResp = await fetch('https://api.spotify.com/v1/me', {
       headers: { 'Authorization': `Bearer ${accessToken}` },
     });
+    
+    if (!userResp.ok) {
+      return res.status(userResp.status).json({ error: 'Invalid token or Spotify API error' });
+    }
+    
     const userData = await userResp.json();
     const userId = userData.id;
 
@@ -75,8 +80,18 @@ module.exports = async function handler(req, res) {
         }),
       }
     );
+    
+    if (!playlistResp.ok) {
+      const errorData = await playlistResp.json();
+      return res.status(playlistResp.status).json({ error: errorData.error?.message || 'Failed to create playlist' });
+    }
+    
     const playlistData = await playlistResp.json();
     const playlistId = playlistData.id;
+
+    if (!playlistId) {
+      return res.status(400).json({ error: 'No playlist ID received' });
+    }
 
     // Buscar y agregar canciones
     const uris = [];
