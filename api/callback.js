@@ -1,6 +1,6 @@
-import axios from 'axios';
+const axios = require('axios');
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   const { code } = req.query;
 
   if (!code) {
@@ -23,4 +23,4 @@ export default async function handler(req, res) {
   } catch (error) {
     res.status(500).json({ error: 'Auth failed' });
   }
-}
+};
