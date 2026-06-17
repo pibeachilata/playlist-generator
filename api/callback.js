@@ -30,7 +30,7 @@ module.exports = async function handler(req, res) {
 
     const data = await response.json();
     const token = data.access_token;
-    res.redirect(`/?token=${token}`);
+res.redirect(`/?token=${encodeURIComponent(token)}`);
   } catch (error) {
     res.status(500).json({ error: 'Auth failed' });
   }
